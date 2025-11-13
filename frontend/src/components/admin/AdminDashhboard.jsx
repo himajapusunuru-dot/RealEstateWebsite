@@ -42,66 +42,6 @@ const AdminDashboard = () => {
 
   const { token, logout } = useAuth();
   const navigate = useNavigate();
-
-  // useEffect(() => {
-  //   const fetchDashboardData = async () => {
-  //     try {
-  //       setLoading(true);
-  //       // Fetch statistics
-  //       const statsResponse = await api.get(
-  //         `/admin/stats`,
-  //         { headers: { Authorization: `Bearer ${token}` } }
-  //       );
-  //       // const statsResponse = await fetch('/api/admin/stats');
-  //       console.log();
-  //       if (!statsResponse.status == 200) {
-  //         throw new Error("Failed to fetch statistics");
-  //       }
-  //       const statsData = await statsResponse.data;
-  //       setStats(statsData);
-
-  //       // Fetch recent users
-  //       // const usersResponse = await fetch('/api/admin/users/recent');
-  //       // if (!usersResponse.ok) {
-  //       //   throw new Error('Failed to fetch recent users');
-  //       // }
-  //       // const usersData = await usersResponse.json();
-  //       // setRecentUsers(usersData);
-
-  //       // Fetch pending owners
-  //       const ownersResponse = await api.get(
-  //         `/admin/owners/pending`,
-  //         { headers: { Authorization: `Bearer ${token}` } }
-  //       );
-  //       // const ownersResponse = await fetch('/api/admin/owners/pending');
-  //       if (!ownersResponse.status == 200) {
-  //         throw new Error("Failed to fetch pending owners");
-  //       }
-  //       const ownersData = await ownersResponse.data;
-  //       setPendingOwners(ownersData);
-
-  //       // Fetch pending realtors
-  //       const realtorsResponse = await api.get(
-  //         `/admin/realtors/pending`,
-  //         { headers: { Authorization: `Bearer ${token}` } }
-  //       );
-  //       // const realtorsResponse = await fetch('/api/admin/realtors/pending');
-  //       if (!realtorsResponse.status == 200) {
-  //         throw new Error("Failed to fetch pending realtors");
-  //       }
-  //       const realtorsData = await realtorsResponse.data;
-  //       setPendingRealtors(realtorsData);
-  //     } catch (err) {
-  //       setError(err.message);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-
-  //   fetchDashboardData();
-  // }, []);
-
-  // Fetch dashboard stats on component mount
   useEffect(() => {
     fetchStats();
     fetchPendingOwners();
@@ -215,17 +155,19 @@ const AdminDashboard = () => {
         throw new Error("Failed to approve user");
       }
 
-      // Update the pending lists
-      // if (userType === "owner") {
-      //   setPendingOwners(pendingOwners.filter((owner) => owner._id !== userId));
-      // } else if (userType === "realtor") {
-      //   setPendingRealtors(
-      //     pendingRealtors.filter((realtor) => realtor._id !== userId)
-      //   );
-      // }
+    
 
       // Refresh data
       fetchStats();
+
+      if (showOwnersList && userType === "owner") {
+        fetchOwners();
+      }
+      
+      if (showRealtorsList && userType === "realtor") {
+        fetchRealtors();
+      }
+      
       fetchPendingOwners();
       fetchPendingRealtors();
 
@@ -238,11 +180,7 @@ const AdminDashboard = () => {
         setSuccess("");
       }, 3000);
 
-      // Update stats
-      // setStats({
-      //   ...stats,
-      //   pendingApprovals: stats.pendingApprovals - 1,
-      // });
+    
     } catch (err) {
       setError(err.message);
     }
@@ -273,21 +211,6 @@ const AdminDashboard = () => {
       setTimeout(() => {
         setSuccess("");
       }, 3000);
-
-      // Update the pending lists
-      // if (userType === "owner") {
-      //   setPendingOwners(pendingOwners.filter((owner) => owner._id !== userId));
-      // } else if (userType === "realtor") {
-      //   setPendingRealtors(
-      //     pendingRealtors.filter((realtor) => realtor._id !== userId)
-      //   );
-      // }
-
-      // // Update stats
-      // setStats({
-      //   ...stats,
-      //   pendingApprovals: stats.pendingApprovals - 1,
-      // });
     } catch (err) {
       setError(err.message);
     }
@@ -323,8 +246,7 @@ const AdminDashboard = () => {
       fetchStats();
 
       setSuccess(
-        `${
-          userTypeToDelete === "owner" ? "Owner" : "Realtor"
+        `${userTypeToDelete === "owner" ? "Owner" : "Realtor"
         } deleted successfully.`
       );
       setShowDeleteModal(false);
@@ -441,7 +363,7 @@ const AdminDashboard = () => {
                     <tbody>
                       {pendingOwners.map((owner) => (
                         <tr key={owner._id}>
-                          <td>{owner.name}</td>
+                          <td>{owner.firstName + " " + owner.lastName}</td>
                           <td>{owner.email}</td>
                           <td>
                             <button
@@ -486,7 +408,7 @@ const AdminDashboard = () => {
                     <tbody>
                       {pendingRealtors.map((realtor) => (
                         <tr key={realtor._id}>
-                          <td>{realtor.name}</td>
+                          <td>{realtor.firstName + " " + realtor.lastName}</td>
                           <td>{realtor.email}</td>
                           <td>
                             <button
@@ -541,22 +463,40 @@ const AdminDashboard = () => {
                       <th>Email</th>
                       <th>Phone</th>
                       <th>Address</th>
+                      <th>Status</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {owners.map((owner) => (
                       <tr key={owner._id}>
-                        <td>{owner.name}</td>
+                        <td>{owner.firstName + " " + owner.lastName}</td>
                         <td>{owner.email}</td>
                         <td>{owner.phone || "N/A"}</td>
-                        <td>{owner.address || "N/A"}</td>
+                        <td>{`${owner.address?.addressLane || ''},${owner.address?.city || ''},${owner.address?.state || ''},${owner.address?.zipcode || ''}` || "N/A"}</td>
+                        <td>
+                          {owner.status === "approved" ? (
+                            <span className="badge bg-success">Approved</span>
+                          ) : owner.status === "rejected" ? (
+                            <span className="badge bg-danger">Rejected</span>
+                          ) : (
+                            <span className="badge bg-warning">Pending</span>
+                          )}
+                        </td>
                         <td>
                           <button
-                            className="btn btn-sm btn-danger"
-                            onClick={() => confirmDelete(owner, "owner")}
+                            className="btn btn-sm btn-success me-1"
+                            onClick={() => handleApproveUser(owner._id, "owner")}
+                            disabled={owner.status === "approved"}
                           >
-                            Delete
+                            Approve
+                          </button>
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleRejectUser(owner._id, "owner")}
+                            disabled={owner.status === "rejected"}
+                          >
+                            Reject
                           </button>
                         </td>
                       </tr>
@@ -570,9 +510,133 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
+      {/* {showOwnersList && (
+        <div className="card mt-4">
+          <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 className="mb-0">All Owners</h4>
+            <button
+              className="btn btn-light"
+              onClick={() => setShowOwnersList(false)}
+            >
+              Close
+            </button>
+          </div>
+          <div className="card-body">
+            {owners.length > 0 ? (
+              <div className="table-responsive">
+                <table className="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Phone</th>
+                      <th>Address</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {owners.map((owner) => (
+                      <tr key={owner._id}>
+                        <td>{owner.firstName + " " + owner.lastName}</td>
+                        <td>{owner.email}</td>
+                        <td>{owner.phone || "N/A"}</td>
+                        <td>{`${owner.address.addressLane},${owner.address.city},${owner.address.state},${owner.address.zipcode}` || "N/A"}</td>
+                        <td>
+                          <button
+                            className="btn btn-sm btn-success me-1"
+                            onClick={() => handleApproveUser(owner._id, "owner")}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleRejectUser(owner._id, "owner")}
+                          >
+                            Reject
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p>No owners found.</p>
+            )}
+          </div>
+        </div>
+      )} */}
 
       {/* Realtors List */}
       {showRealtorsList && (
+        <div className="card mt-4">
+          <div className="card-header bg-info text-white d-flex justify-content-between align-items-center">
+            <h4 className="mb-0">All Realtors</h4>
+            <button
+              className="btn btn-light"
+              onClick={() => setShowRealtorsList(false)}
+            >
+              Close
+            </button>
+          </div>
+          <div className="card-body">
+            {realtors.length > 0 ? (
+              <div className="table-responsive">
+                <table className="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Phone</th>
+                      <th>Address</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {realtors.map((realtor) => (
+                      <tr key={realtor._id}>
+                        <td>{realtor.firstName + " " + realtor.lastName}</td>
+                        <td>{realtor.email}</td>
+                        <td>{realtor.phone || "N/A"}</td>
+                        <td>{`${realtor.address?.addressLane || ''},${realtor.address?.city || ''},${realtor.address?.state || ''},${realtor.address?.zipcode || ''}` || "N/A"}</td>
+                        <td>
+                          {realtor.status === "approved" ? (
+                            <span className="badge bg-success">Approved</span>
+                          ) : realtor.status === "rejected" ? (
+                            <span className="badge bg-danger">Rejected</span>
+                          ) : (
+                            <span className="badge bg-warning">Pending</span>
+                          )}
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-sm btn-success me-1"
+                            onClick={() => handleApproveUser(realtor._id, "realtor")}
+                            disabled={realtor.status === "approved"}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleRejectUser(realtor._id, "realtor")}
+                            disabled={realtor.status === "rejected"}
+                          >
+                            Reject
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p>No realtors found.</p>
+            )}
+          </div>
+        </div>
+      )}
+      {/* {showRealtorsList && (
         <div className="card mt-4">
           <div className="card-header bg-info text-white d-flex justify-content-between align-items-center">
             <h4 className="mb-0">All Realtors</h4>
@@ -599,16 +663,22 @@ const AdminDashboard = () => {
                   <tbody>
                     {realtors.map((realtor) => (
                       <tr key={realtor._id}>
-                        <td>{realtor.name}</td>
+                        <td>{realtor.firstName + " " + realtor.lastName}</td>
                         <td>{realtor.email}</td>
                         <td>{realtor.phone || "N/A"}</td>
-                        <td>{realtor.address || "N/A"}</td>
+                        <td>{`${realtor.address.addressLane},${realtor.address.city},${realtor.address.state},${realtor.address.zipcode}` || "N/A"}</td>
                         <td>
                           <button
-                            className="btn btn-sm btn-danger"
-                            onClick={() => confirmDelete(realtor, "realtor")}
+                            className="btn btn-sm btn-success me-1"
+                            onClick={() => handleApproveUser(realtor._id, "realtor")}
                           >
-                            Delete
+                            Approve
+                          </button>
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleRejectUser(realtor._id, "realtor")}
+                          >
+                            Reject
                           </button>
                         </td>
                       </tr>
@@ -621,7 +691,7 @@ const AdminDashboard = () => {
             )}
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && userToDelete && (

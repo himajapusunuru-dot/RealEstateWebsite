@@ -83,9 +83,9 @@ exports.createContract = async (req, res) => {
 const getContracts = async (query, population) => {
   return Contract.find(query)
     .populate("property", "name type location price status")
-    .populate("owner", "name email phone")
-    .populate("customer", "name email phone")
-    .populate("realtor", "name");
+    .populate("owner", "firstName lastName email phone")
+    .populate("customer", "firstName lastName email phone")
+    .populate("realtor", "firstName lastName");
 };
 
 // Get realtor's contracts

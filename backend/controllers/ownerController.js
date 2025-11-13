@@ -31,7 +31,7 @@ exports.getPropertiesByOwnerId = async (req, res) => {
 
 exports.getAllRealtors = async (req, res) => {
   try {
-    const realtors = await Realtor.find({}, { _id: 1, name: 1 });
+    const realtors = await Realtor.find({status: "approved"}, { _id: 1, firstName: 1, lastName: 1 });
 
     res.status(200).json({
       success: true,

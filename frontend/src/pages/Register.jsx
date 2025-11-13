@@ -6,7 +6,8 @@ import api from "../api/axiosInstance";
 const Register = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    fullName: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     password: "",
@@ -17,7 +18,10 @@ const Register = () => {
     dob: "",
     occupation: "",
     annualIncome: "",
-    address: "",
+    addressLane: "",
+    city: "",
+    state: "",
+    zipcode: "",
     SSN: "",
   });
 
@@ -37,7 +41,7 @@ const Register = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     // For phone field, only allow numbers
     if (name === "phone") {
       const numericValue = value.replace(/[^0-9]/g, "");
@@ -50,6 +54,15 @@ const Register = () => {
 
     // For annual income field, only allow numbers
     if (name === "annualIncome") {
+      const numericValue = value.replace(/[^0-9]/g, "");
+      setFormData((prevState) => ({
+        ...prevState,
+        [name]: numericValue,
+      }));
+      return;
+    }
+
+    if (name === "zipcode") {
       const numericValue = value.replace(/[^0-9]/g, "");
       setFormData((prevState) => ({
         ...prevState,
@@ -81,13 +94,12 @@ const Register = () => {
     }
 
     // Determine required fields based on user type
-    let requiredFields = ["fullName", "email", "phone", "password", "address"];
-    
+    let requiredFields = ["firstName", "lastName", "email", "phone", "password", "addressLane", "city", "state", "zipcode", "SSN"];
+
     if (formData.userType === "customer") {
       requiredFields = [
         ...requiredFields,
         "dob",
-        "SSN",
       ];
     } else if (formData.userType === "realtor") {
       // Realtor only needs the basic fields which are already included
@@ -96,7 +108,6 @@ const Register = () => {
       requiredFields = [
         ...requiredFields,
         "dob",
-        "SSN",
       ];
     }
 
@@ -127,11 +138,18 @@ const Register = () => {
 
       // Create payload based on user type
       let payload = {
-        name: formData.fullName,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
-        address: formData.address,
+        address: {
+          addressLane: formData.addressLane,
+          city: formData.city,
+          state: formData.state,
+          zipcode: formData.zipcode,
+        },
+        SSN: formData.SSN
       };
 
       // Add customer/owner-specific fields
@@ -141,7 +159,6 @@ const Register = () => {
           dob: formData.dob,
           occupation: formData.occupation,
           annualIncome: formData.annualIncome,
-          SSN: formData.SSN
         };
       }
 
@@ -212,36 +229,48 @@ const Register = () => {
       <Form onSubmit={handleSubmit}>
         <Row>
           <Col md={6}>
-            <Form.Group className="mb-3" controlId="fullName">
-              <Form.Label>Full Name</Form.Label>
+            <Form.Group className="mb-3" controlId="firstName">
+              <Form.Label>First Name</Form.Label>
               <Form.Control
                 type="text"
-                name="fullName"
-                value={formData.fullName}
+                name="firstName"
+                value={formData.firstName}
                 onChange={handleChange}
-                placeholder="Enter your full name"
+                placeholder="Enter your First Name"
                 required
               />
             </Form.Group>
           </Col>
-
           <Col md={6}>
-            <Form.Group className="mb-3" controlId="email">
-              <Form.Label>Email Address</Form.Label>
+            <Form.Group className="mb-3" controlId="lastName">
+              <Form.Label>Last Name</Form.Label>
               <Form.Control
-                type="email"
-                name="email"
-                value={formData.email}
+                type="text"
+                name="lastName"
+                value={formData.lastName}
                 onChange={handleChange}
-                placeholder="Enter your email"
+                placeholder="Enter your Last Name"
                 required
               />
             </Form.Group>
           </Col>
         </Row>
+        <Row>
+          <Form.Group className="mb-3" controlId="email">
+            <Form.Label>Email Address</Form.Label>
+            <Form.Control
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Enter your email"
+              required
+            />
+          </Form.Group>
+        </Row>
 
         <Row>
-          <Col md={6}>
+          <Col>
             <Form.Group className="mb-3" controlId="phone">
               <Form.Label>Phone Number</Form.Label>
               <Form.Control
@@ -272,18 +301,58 @@ const Register = () => {
           )}
         </Row>
 
-        <Form.Group className="mb-3" controlId="address">
-          <Form.Label>Address</Form.Label>
-          <Form.Control
-            as="textarea"
-            rows={2}
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-            placeholder="Enter your full address"
-            required
-          />
-        </Form.Group>
+        <Row>
+          <Row>
+            <Form.Group className="mb-3" controlId="addressLane">
+              <Form.Label>Address Lane</Form.Label>
+              <Form.Control
+                type="text"
+                name="addressLane"
+                value={formData.addressLane}
+                onChange={handleChange}
+                placeholder="Enter your Lane Address"
+              />
+            </Form.Group>
+          </Row>
+          <Row>
+            <Col md={6}>
+              <Form.Group className="mb-3" controlId="city">
+                <Form.Label>City</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  placeholder="Enter your City"
+                />
+              </Form.Group>
+            </Col>
+            <Col md={6}>
+              <Form.Group className="mb-3" controlId="State">
+                <Form.Label>State</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleChange}
+                  placeholder="Enter your State"
+                />
+              </Form.Group>
+            </Col>
+            <Col md={6}>
+              <Form.Group className="mb-3" controlId="zipcode">
+                <Form.Label>Zipcode</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="zipcode"
+                  value={formData.zipcode}
+                  onChange={handleChange}
+                  placeholder="Enter your Zipcode"
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+        </Row>
 
         {/* Only show these fields for customers and owners */}
         {["customer", "owner"].includes(formData.userType) && (
@@ -315,22 +384,22 @@ const Register = () => {
                 </Form.Group>
               </Col>
             </Row>
-
-            <Form.Group className="mb-3" controlId="SSN">
-              <Form.Label>Social Security Number (SSN)</Form.Label>
-              <Form.Control
-                type="text"
-                name="SSN"
-                value={formData.SSN}
-                onChange={handleChange}
-                placeholder="XXX-XX-XXXX"
-                required
-                pattern="^\d{3}-\d{2}-\d{4}$"
-              />
-              <Form.Text className="text-muted">Format: XXX-XX-XXXX</Form.Text>
-            </Form.Group>
           </>
         )}
+
+        <Form.Group className="mb-3" controlId="SSN">
+          <Form.Label>Social Security Number (SSN)</Form.Label>
+          <Form.Control
+            type="text"
+            name="SSN"
+            value={formData.SSN}
+            onChange={handleChange}
+            placeholder="XXX-XX-XXXX"
+            required
+            pattern="^\d{3}-\d{2}-\d{4}$"
+          />
+          <Form.Text className="text-muted">Format: XXX-XX-XXXX</Form.Text>
+        </Form.Group>
 
         <Row>
           <Col md={6}>

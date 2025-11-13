@@ -7,8 +7,8 @@ exports.getManagedProperties = async (req, res) => {
   try {
     console.log(req);
     const properties = await Property.find({ realtor: req.user.id })
-      .populate("owner", "name email phone")
-      .populate("interestedCustomers", "name email");
+      .populate("owner", "firstName lastName email phone")
+      .populate("interestedCustomers", "firstName lastName email");
 
     res.json({
       success: true,
@@ -37,8 +37,8 @@ exports.getPropertyApplications = async (req, res) => {
     }
 
     const applications = await Application.find({ property: property._id })
-      .populate("customer", "name email phone")
-      .populate("property", "name price address")
+      .populate("customer", "firstName LastName email phone")
+      .populate("property", "firstName LastName price address")
       .sort({ createdAt: -1 });
 
     res.json({
@@ -71,8 +71,8 @@ exports.getAllApplications = async (req, res) => {
     const applications = await Application.find({
       property: { $in: managedProperties.map((p) => p._id) },
     })
-      .populate("customer", "name email phone")
-      .populate("property", "name price");
+      .populate("customer", "firstName lastName email phone")
+      .populate("property", "firstName lastName price");
 
     res.json({
       success: true,
@@ -94,7 +94,10 @@ exports.approveApplication = async (req, res) => {
         status: "pending",
         property: { $in: await getRealtorProperties(req.user.id) },
       },
-      { status: "approved" },
+      {
+        status: "approved",
+        needsPriceConfirmation: true
+      },
       { new: true }
     ).populate("property", "name price");
 
@@ -158,7 +161,7 @@ exports.getAssociatedCustomers = async (req, res) => {
 
     const customers = await Customer.find({
       _id: { $in: applications },
-    }).select("name email phone createdAt");
+    }).select("firstName lastName email phone createdAt");
 
     res.json({
       success: true,
@@ -180,7 +183,7 @@ exports.getAssociatedOwners = async (req, res) => {
 
     const owners = await Owner.find({
       _id: { $in: properties },
-    }).select("name email phone status");
+    }).select("firstName lastName email phone status");
 
     res.json({
       success: true,

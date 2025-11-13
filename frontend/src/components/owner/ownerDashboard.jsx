@@ -7,11 +7,11 @@ import SignaturePad from "../../common/SignaturePad";
 const DisplaySignatures = ({ contract }) => {
   const hasCustomerSignature = contract.signatures?.customer && contract.signatures.customer !== 'null';
   const hasOwnerSignature = contract.signatures?.owner && contract.signatures.owner !== 'null';
-  
+
   return (
     <div className="signatures-display mb-4">
       <h5 className="mb-3">Contract Signatures</h5>
-      
+
       <div className="row">
         <div className="col-md-6 mb-3">
           <div className="card">
@@ -25,10 +25,10 @@ const DisplaySignatures = ({ contract }) => {
             </div>
             <div className="card-body">
               {hasCustomerSignature ? (
-                <img 
-                  src={contract.signatures.customer} 
-                  alt="Customer Signature" 
-                  className="img-fluid" 
+                <img
+                  src={contract.signatures.customer}
+                  alt="Customer Signature"
+                  className="img-fluid"
                   style={{ maxHeight: '100px', border: '1px solid #eee', borderRadius: '4px' }}
                 />
               ) : (
@@ -39,7 +39,7 @@ const DisplaySignatures = ({ contract }) => {
             </div>
           </div>
         </div>
-        
+
         <div className="col-md-6 mb-3">
           <div className="card">
             <div className="card-header d-flex justify-content-between align-items-center">
@@ -52,10 +52,10 @@ const DisplaySignatures = ({ contract }) => {
             </div>
             <div className="card-body">
               {hasOwnerSignature ? (
-                <img 
-                  src={contract.signatures.owner} 
-                  alt="Owner Signature" 
-                  className="img-fluid" 
+                <img
+                  src={contract.signatures.owner}
+                  alt="Owner Signature"
+                  className="img-fluid"
                   style={{ maxHeight: '100px', border: '1px solid #eee', borderRadius: '4px' }}
                 />
               ) : (
@@ -67,6 +67,205 @@ const DisplaySignatures = ({ contract }) => {
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+const PriceApprovalRequests = ({ token, userId, onApprovalChange }) => {
+  const [priceRequests, setPriceRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch price approval requests from the backend API
+  useEffect(() => {
+    const fetchPriceRequests = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Call backend API to get requests needing approval
+        const response = await api.get(`/properties/${userId}/price-approval-requests`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data.success) {
+          setPriceRequests(response.data.requests || []);
+        } else {
+          setError(response.data.message || 'Failed to fetch requests');
+        }
+      } catch (error) {
+        console.error("Error fetching price approval requests:", error);
+        setError('Error fetching price approval requests. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPriceRequests();
+
+    // Poll for updates every 30 seconds
+    const intervalId = setInterval(fetchPriceRequests, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [userId, token]);
+
+  // Handle approving a price request
+  const handleApprovePrice = async (applicationId) => {
+    try {
+      // Confirm with the owner
+      const confirmed = window.confirm("Are you sure you want to approve this price?");
+      if (!confirmed) return;
+
+      // Call backend API to approve the price
+      const response = await api.put(`/properties/${userId}/applications/${applicationId}/approve-price`, {
+        approved: true
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        // Update local state
+        setPriceRequests(prevRequests =>
+          prevRequests.filter(req => req._id !== applicationId)
+        );
+
+        // Notify parent component if needed
+        if (onApprovalChange) {
+          onApprovalChange();
+        }
+
+        // Show success message
+        alert("Price has been approved. The realtor will be notified.");
+      } else {
+        alert(response.data.message || 'Failed to approve price');
+      }
+    } catch (error) {
+      console.error("Error approving price:", error);
+      alert("Failed to approve price. Please try again.");
+    }
+  };
+
+  // Handle rejecting a price request
+  const handleRejectPrice = async (applicationId) => {
+    try {
+      // Confirm with the owner
+      const confirmed = window.confirm("Are you sure you want to reject this price?");
+      if (!confirmed) return;
+
+      // You can optionally ask for a reason
+      const reason = prompt("Would you like to provide a reason for rejecting this price? (Optional)");
+
+      // Call backend API to reject the price
+      const response = await api.put(`/properties/${userId}/applications/${applicationId}/approve-price`, {
+        approved: false,
+        reason: reason || ""
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        // Update local state
+        setPriceRequests(prevRequests =>
+          prevRequests.filter(req => req._id !== applicationId)
+        );
+
+        // Notify parent component if needed
+        if (onApprovalChange) {
+          onApprovalChange();
+        }
+
+        // Show success message
+        alert("Price has been rejected. The realtor will be notified.");
+      } else {
+        alert(response.data.message || 'Failed to reject price');
+      }
+    } catch (error) {
+      console.error("Error rejecting price:", error);
+      alert("Failed to reject price. Please try again.");
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center py-4">Loading price approval requests...</div>;
+  }
+
+  if (error) {
+    return <div className="alert alert-danger">{error}</div>;
+  }
+
+  if (priceRequests.length === 0) {
+    return (
+      <div className="alert alert-info">
+        No pending price approval requests at this time.
+      </div>
+    );
+  }
+
+  return (
+    <div className="row">
+      {priceRequests.map(request => {
+        // Calculate price difference percentage
+        const property = request.property;
+        const percentageDiff = property.price > 0 ?
+          (((property.price - request.finalPrice) / property.price) * 100).toFixed(2) : 0;
+
+        return (
+          <div className="col-md-6 col-lg-4 mb-4" key={request._id}>
+            <div className="card border-warning">
+              <div className="card-header bg-warning text-dark">
+                <h5 className="mb-0">Price Approval Request</h5>
+              </div>
+              <div className="card-body">
+                <h6>{property.name}</h6>
+
+                <div className="my-3">
+                  <div className="d-flex justify-content-between">
+                    <span><strong>Listed Price:</strong></span>
+                    <span>${property.price?.toLocaleString()}</span>
+                  </div>
+                  <div className="d-flex justify-content-between">
+                    <span><strong>Offered Price:</strong></span>
+                    <span>${request.finalPrice?.toLocaleString()}</span>
+                  </div>
+                  <div className="d-flex justify-content-between text-danger">
+                    <span><strong>Difference:</strong></span>
+                    <span>-${(property.price - request.finalPrice).toLocaleString()} ({percentageDiff}%)</span>
+                  </div>
+                </div>
+
+                <div className="d-flex justify-content-between mb-3">
+                  <small className="text-muted">
+                    Customer: {request.customer.name}
+                  </small>
+                  <small className="text-muted">
+                    Requested: {new Date(request.updatedAt).toLocaleString()}
+                  </small>
+                </div>
+
+                <div className="alert alert-info mb-3">
+                  <small>A customer has offered a lower price for your property.
+                    Please approve or reject this price.</small>
+                </div>
+
+                <div className="d-grid gap-2">
+                  <button
+                    className="btn btn-success"
+                    onClick={() => handleApprovePrice(request._id)}
+                  >
+                    Approve Price
+                  </button>
+                  <button
+                    className="btn btn-outline-danger"
+                    onClick={() => handleRejectPrice(request._id)}
+                  >
+                    Reject Price
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -91,6 +290,7 @@ const OwnersPage = () => {
   });
   const [imageFiles, setImageFiles] = useState([]);
   const { token, userId, logout } = useAuth();
+  const [priceRequestCount, setPriceRequestCount] = useState(0);
 
   // Fetch properties, realtors, and contracts on component mount
   useEffect(() => {
@@ -111,9 +311,9 @@ const OwnersPage = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // console.log(properties.data.properties);
-        // console.log(realtors);
-        // console.log(contracts);
+        fetchPriceRequestCount();
+
+       
 
         setProperties(properties.data.properties || []);
         setRealtors(realtors.data.data || []);
@@ -125,6 +325,21 @@ const OwnersPage = () => {
     fetchData();
   }, [userId, token]);
 
+
+  const fetchPriceRequestCount = async () => {
+    try {
+      const response = await api.get(`/properties/${userId}/price-approval-requests`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        setPriceRequestCount(response.data.requests?.length || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching price request count:", error);
+    }
+  };
+
   // Handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -132,6 +347,10 @@ const OwnersPage = () => {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handlePriceApprovalChange = () => {
+    fetchPriceRequestCount();
   };
 
   // Handle image upload
@@ -220,8 +439,7 @@ const OwnersPage = () => {
     } catch (error) {
       console.error("Error creating property:", error);
       alert(
-        `Failed to create property: ${
-          error.response?.data?.message || error.message
+        `Failed to create property: ${error.response?.data?.message || error.message
         }`
       );
     }
@@ -242,7 +460,7 @@ const OwnersPage = () => {
         alert("Please sign the contract before submitting.");
         return;
       }
-      
+
       // Send request to sign the contract with signature
       const response = await api.put(
         `/owner/${userId}/contracts/${contractId}/sign`,
@@ -254,19 +472,19 @@ const OwnersPage = () => {
 
       if (response.data.success) {
         // Update contract status locally
-        setContracts(contracts.map(contract => 
-          contract._id === contractId 
-            ? { 
-                ...contract, 
-                status: "active", 
-                signatures: { ...contract.signatures, owner: signature }
-              } 
+        setContracts(contracts.map(contract =>
+          contract._id === contractId
+            ? {
+              ...contract,
+              status: "active",
+              signatures: { ...contract.signatures, owner: signature }
+            }
             : contract
         ));
-        
+
         alert("Contract signed successfully! The contract is now active.");
         setShowContractDetails(false);
-        
+
         // Reset signature
         setSignature(null);
       }
@@ -297,12 +515,12 @@ const OwnersPage = () => {
 
       if (response.data.success) {
         // Update contract status locally
-        setContracts(contracts.map(contract => 
-          contract._id === contractId 
-            ? { ...contract, status: "cancelled" } 
+        setContracts(contracts.map(contract =>
+          contract._id === contractId
+            ? { ...contract, status: "cancelled" }
             : contract
         ));
-        
+
         alert("Contract rejected successfully.");
         setShowContractDetails(false);
       }
@@ -372,16 +590,15 @@ const OwnersPage = () => {
           </button>
         </div>
       </div>
-      
+
       {/* Horizontal Tabs Navigation */}
       <div className="row">
         <div className="col-12">
           <ul className="nav nav-tabs flex-row">
             <li className="nav-item">
               <button
-                className={`nav-link ${
-                  activeTab === "uploadProperty" ? "active" : ""
-                }`}
+                className={`nav-link ${activeTab === "uploadProperty" ? "active" : ""
+                  }`}
                 onClick={() => setActiveTab("uploadProperty")}
               >
                 Upload Property
@@ -389,9 +606,8 @@ const OwnersPage = () => {
             </li>
             <li className="nav-item">
               <button
-                className={`nav-link ${
-                  activeTab === "myProperties" ? "active" : ""
-                }`}
+                className={`nav-link ${activeTab === "myProperties" ? "active" : ""
+                  }`}
                 onClick={() => setActiveTab("myProperties")}
               >
                 My Properties
@@ -399,14 +615,24 @@ const OwnersPage = () => {
             </li>
             <li className="nav-item">
               <button
-                className={`nav-link ${
-                  activeTab === "contracts" ? "active" : ""
-                }`}
+                className={`nav-link ${activeTab === "contracts" ? "active" : ""
+                  }`}
                 onClick={() => setActiveTab("contracts")}
               >
                 Contracts
                 {contracts && contracts.some(c => c.status === "pending_owner") && (
                   <span className="badge bg-danger ms-2">New</span>
+                )}
+              </button>
+            </li>
+            <li className="nav-item">
+              <button
+                className={`nav-link ${activeTab === "priceRequests" ? "active" : ""}`}
+                onClick={() => setActiveTab("priceRequests")}
+              >
+                Price Requests
+                {priceRequestCount > 0 && (
+                  <span className="badge bg-danger ms-2">{priceRequestCount}</span>
                 )}
               </button>
             </li>
@@ -508,7 +734,7 @@ const OwnersPage = () => {
                       <option value="">Select a Realtor</option>
                       {realtors.map((realtor) => (
                         <option key={realtor._id} value={realtor._id}>
-                          {realtor.name}
+                          {realtor.firstName + " " + realtor.lastName}
                         </option>
                       ))}
                     </select>
@@ -588,7 +814,7 @@ const OwnersPage = () => {
                         </p>
                         {property.realtor && (
                           <p className="card-text">
-                            Realtor: {property.realtor.name}
+                            Realtor: {property.realtor.firstName + " " + property.realtor.lastName}
                           </p>
                         )}
                         <button
@@ -598,7 +824,7 @@ const OwnersPage = () => {
                             const propertyContract = contracts.find(
                               contract => contract.property === property._id
                             );
-                            
+
                             if (propertyContract) {
                               handleViewContract(propertyContract);
                             } else {
@@ -639,12 +865,12 @@ const OwnersPage = () => {
                   <tbody>
                     {contracts.map((contract) => {
                       const property = properties.find(p => p._id === contract.property._id) || {};
-                      
+
                       return (
                         <tr key={contract._id}>
                           <td>{property.name || "Unknown Property"}</td>
                           <td>{contract.type === "rental" ? "Rental" : "Sale"}</td>
-                          <td>{contract.customer?.name || "Unknown Customer"}</td>
+                          <td>{contract.customer?.firstName +" "+contract.customer?.lastName || "Unknown Customer"}</td>
                           <td>{new Date(contract.contractDate).toLocaleDateString()}</td>
                           <td>
                             <span className={`badge bg-${getContractStatusColor(contract.status)}`}>
@@ -672,6 +898,18 @@ const OwnersPage = () => {
             )}
           </div>
         )}
+
+        {/* Price Requests Tab */}
+        {activeTab === "priceRequests" && (
+          <div className="tab-pane active">
+            <h2 className="mb-4">Price Approval Requests</h2>
+            <PriceApprovalRequests
+              token={token}
+              userId={userId}
+              onApprovalChange={handlePriceApprovalChange}
+            />
+          </div>
+        )}
       </div>
 
       {/* Contract Details Modal */}
@@ -696,9 +934,10 @@ const OwnersPage = () => {
                 <div className="row mb-4">
                   <div className="col-md-6">
                     <h6>Property</h6>
-                    <p>{properties.find(p =>{ 
+                    <p>{properties.find(p => {
                       console.log(p);
-                      return p._id === selectedContract.property._id})?.name || "Unknown Property"}</p>
+                      return p._id === selectedContract.property._id
+                    })?.name || "Unknown Property"}</p>
                   </div>
                   <div className="col-md-6">
                     <h6>Status</h6>
@@ -750,7 +989,7 @@ const OwnersPage = () => {
                 {selectedContract.type === "sale" && (
                   <div className="loan-details-section mb-4">
                     <h5 className="mb-3">Loan Details</h5>
-                    
+
                     {selectedContract.loanDetails && Object.keys(selectedContract.loanDetails).length > 0 ? (
                       <div className="card">
                         <div className="card-body">
@@ -764,43 +1003,42 @@ const OwnersPage = () => {
                               <p>{selectedContract.loanDetails.provider || "Not provided"}</p>
                             </div>
                           </div>
-                          
+
                           <div className="row mb-3">
                             <div className="col-md-6">
                               <h6>Loan Type</h6>
-                              <p>{selectedContract.loanDetails.type ? 
-                                 selectedContract.loanDetails.type.charAt(0).toUpperCase() + 
-                                 selectedContract.loanDetails.type.slice(1) : 
-                                 "Not provided"}</p>
+                              <p>{selectedContract.loanDetails.type ?
+                                selectedContract.loanDetails.type.charAt(0).toUpperCase() +
+                                selectedContract.loanDetails.type.slice(1) :
+                                "Not provided"}</p>
                             </div>
                             <div className="col-md-6">
                               <h6>Interest Rate</h6>
-                              <p>{selectedContract.loanDetails.interestRate ? 
-                                 `${selectedContract.loanDetails.interestRate}%` : 
-                                 "Not provided"}</p>
+                              <p>{selectedContract.loanDetails.interestRate ?
+                                `${selectedContract.loanDetails.interestRate}%` :
+                                "Not provided"}</p>
                             </div>
                           </div>
-                          
+
                           <div className="row">
                             <div className="col-md-6">
                               <h6>Approval Date</h6>
-                              <p>{selectedContract.loanDetails.approvalDate ? 
-                                 new Date(selectedContract.loanDetails.approvalDate).toLocaleDateString() : 
-                                 "Not provided"}</p>
+                              <p>{selectedContract.loanDetails.approvalDate ?
+                                new Date(selectedContract.loanDetails.approvalDate).toLocaleDateString() :
+                                "Not provided"}</p>
                             </div>
                             <div className="col-md-6">
                               <h6>Loan Status</h6>
                               <p>
-                                <span className={`badge ${
-                                  selectedContract.loanDetails.status === "approved" ? "bg-success" :
+                                <span className={`badge ${selectedContract.loanDetails.status === "approved" ? "bg-success" :
                                   selectedContract.loanDetails.status === "pre-approved" ? "bg-info" :
-                                  selectedContract.loanDetails.status === "pending" ? "bg-warning" :
-                                  selectedContract.loanDetails.status === "denied" ? "bg-danger" : "bg-secondary"
-                                }`}>
-                                  {selectedContract.loanDetails.status ? 
-                                   selectedContract.loanDetails.status.charAt(0).toUpperCase() + 
-                                   selectedContract.loanDetails.status.slice(1) : 
-                                   "Not provided"}
+                                    selectedContract.loanDetails.status === "pending" ? "bg-warning" :
+                                      selectedContract.loanDetails.status === "denied" ? "bg-danger" : "bg-secondary"
+                                  }`}>
+                                  {selectedContract.loanDetails.status ?
+                                    selectedContract.loanDetails.status.charAt(0).toUpperCase() +
+                                    selectedContract.loanDetails.status.slice(1) :
+                                    "Not provided"}
                                 </span>
                               </p>
                             </div>
@@ -825,9 +1063,9 @@ const OwnersPage = () => {
                   <div className="signature-section mb-4">
                     <h5 className="mb-3">Your Signature</h5>
                     <p className="text-muted mb-3">Please sign below to finalize this contract.</p>
-                    
+
                     <SignaturePad onSignatureChange={handleSignatureChange} />
-                    
+
                     {signature && (
                       <div className="mt-3">
                         <div className="alert alert-success">
@@ -837,7 +1075,7 @@ const OwnersPage = () => {
                     )}
                   </div>
                 )}
-                
+
                 {selectedContract.status === "pending_owner" && (
                   <div className="alert alert-warning">
                     <strong>Action Required:</strong> Please review the contract carefully before signing.

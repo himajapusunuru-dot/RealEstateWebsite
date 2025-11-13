@@ -318,7 +318,7 @@ const ContractDetails = ({
             <div className="col-md-6">
               <h6>Customer Information</h6>
               <p>
-                {customer.name || "Unknown"}
+                {customer.firstName + " " + customer.lastName || "Unknown"}
                 <br />
                 <small className="text-muted">
                   {customer.email || ""}
@@ -329,7 +329,7 @@ const ContractDetails = ({
             <div className="col-md-6">
               <h6>Owner Information</h6>
               <p>
-                {owner.name || "Unknown"}
+                {owner.firstName + " " + owner.lastName || "Unknown"}
                 <br />
                 <small className="text-muted">
                   {owner.email || ""}

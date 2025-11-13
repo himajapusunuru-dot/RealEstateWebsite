@@ -64,7 +64,8 @@ const CustomerPage = () => {
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [applicationForm, setApplicationForm] = useState({
-    fullname: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phonenumber: "",
     SSN: "",
@@ -177,7 +178,8 @@ const CustomerPage = () => {
 
         // Reset form
         setApplicationForm({
-          fullname: "",
+          firstName: "",
+          lastName: "",
           email: "",
           phonenumber: "",
           SSN: "",
@@ -201,8 +203,7 @@ const CustomerPage = () => {
     } catch (error) {
       console.error("Error sending application:", error);
       alert(
-        `Failed to send application: ${
-          error.response?.data?.message || error.message
+        `Failed to send application: ${error.response?.data?.message || error.message
         }`
       );
     }
@@ -240,7 +241,7 @@ const CustomerPage = () => {
         return;
       }
       // Create payload with loan details if provided
-      const payload = {signature: signature,};
+      const payload = { signature: signature, };
       console.log(loanDetails);
 
       // If this is a sale contract and loan details are provided, include them
@@ -270,11 +271,11 @@ const CustomerPage = () => {
           contracts.map((contract) =>
             contract._id === contractId
               ? {
-                  ...contract,
-                  status: "pending_owner",
-                  signatures: { ...contract.signatures, customer: userId },
-                  loanDetails: payload.loanDetails || contract.loanDetails,
-                }
+                ...contract,
+                status: "pending_owner",
+                signatures: { ...contract.signatures, customer: userId },
+                loanDetails: payload.loanDetails || contract.loanDetails,
+              }
               : contract
           )
         );
@@ -297,8 +298,7 @@ const CustomerPage = () => {
     } catch (error) {
       console.error("Error signing contract:", error);
       alert(
-        `Failed to sign contract: ${
-          error.response?.data?.message || error.message
+        `Failed to sign contract: ${error.response?.data?.message || error.message
         }`
       );
     }
@@ -344,8 +344,7 @@ const CustomerPage = () => {
       console.error("Error rejecting contract:", error);
 
       alert(
-        `Failed to reject contract: ${
-          error.response?.data?.message || error.message
+        `Failed to reject contract: ${error.response?.data?.message || error.message
         }`
       );
     }
@@ -432,9 +431,8 @@ const CustomerPage = () => {
           <ul className="nav nav-tabs flex-row">
             <li className="nav-item">
               <button
-                className={`nav-link ${
-                  activeTab === "browseProperties" ? "active" : ""
-                }`}
+                className={`nav-link ${activeTab === "browseProperties" ? "active" : ""
+                  }`}
                 onClick={() => setActiveTab("browseProperties")}
               >
                 Browse Properties
@@ -442,9 +440,8 @@ const CustomerPage = () => {
             </li>
             <li className="nav-item">
               <button
-                className={`nav-link ${
-                  activeTab === "myApplications" ? "active" : ""
-                }`}
+                className={`nav-link ${activeTab === "myApplications" ? "active" : ""
+                  }`}
                 onClick={() => setActiveTab("myApplications")}
               >
                 My Applications
@@ -452,9 +449,8 @@ const CustomerPage = () => {
             </li>
             <li className="nav-item">
               <button
-                className={`nav-link ${
-                  activeTab === "contracts" ? "active" : ""
-                }`}
+                className={`nav-link ${activeTab === "contracts" ? "active" : ""
+                  }`}
                 onClick={() => setActiveTab("contracts")}
               >
                 Contracts
@@ -567,16 +563,30 @@ const CustomerPage = () => {
                   <form onSubmit={handleSubmitApplication}>
                     <div className="row mb-3">
                       <div className="col-md-6">
-                        <label className="form-label">Full Name</label>
+                        <label className="form-label">First Name</label>
                         <input
                           type="text"
                           className="form-control"
-                          name="fullname"
-                          value={applicationForm.fullname}
+                          name="firstName"
+                          value={applicationForm.firstName}
                           onChange={handleApplicationFormChange}
                           required
                         />
                       </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Last Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          name="lastName"
+                          value={applicationForm.lastName}
+                          onChange={handleApplicationFormChange}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="row mb-3">
                       <div className="col-md-6">
                         <label className="form-label">Email</label>
                         <input
@@ -769,13 +779,12 @@ const CustomerPage = () => {
                         </td>
                         <td>
                           <span
-                            className={`badge ${
-                              application.status === "approved"
+                            className={`badge ${application.status === "approved"
                                 ? "bg-success"
                                 : application.status === "rejected"
-                                ? "bg-danger"
-                                : "bg-warning"
-                            }`}
+                                  ? "bg-danger"
+                                  : "bg-warning"
+                              }`}
                           >
                             {application.status.charAt(0).toUpperCase() +
                               application.status.slice(1)}
@@ -787,15 +796,11 @@ const CustomerPage = () => {
                             onClick={() => {
                               // Could show application details modal here
                               alert(
-                                `Application Details for ${
-                                  application.property.name
-                                }\n\nFull Name: ${
-                                  application.fullname
-                                }\nEmployment Status: ${
-                                  application.employementstatus
-                                }\nAnnual Income: ${
-                                  application.annualincome?.toLocaleString() ||
-                                  "Not provided"
+                                `Application Details for ${application.property.name
+                                }\n\nFull Name: ${application.firstName +" "+application.lastName
+                                }\nEmployment Status: ${application.employementstatus
+                                }\nAnnual Income: ${application.annualincome?.toLocaleString() ||
+                                "Not provided"
                                 }`
                               );
                             }}
@@ -1136,9 +1141,9 @@ const CustomerPage = () => {
                               <p>
                                 {selectedContract.loanDetails.type
                                   ? selectedContract.loanDetails.type
-                                      .charAt(0)
-                                      .toUpperCase() +
-                                    selectedContract.loanDetails.type.slice(1)
+                                    .charAt(0)
+                                    .toUpperCase() +
+                                  selectedContract.loanDetails.type.slice(1)
                                   : "Not provided"}
                               </p>
                             </div>
@@ -1158,8 +1163,8 @@ const CustomerPage = () => {
                               <p>
                                 {selectedContract.loanDetails.approvalDate
                                   ? new Date(
-                                      selectedContract.loanDetails.approvalDate
-                                    ).toLocaleDateString()
+                                    selectedContract.loanDetails.approvalDate
+                                  ).toLocaleDateString()
                                   : "Not provided"}
                               </p>
                             </div>
@@ -1167,29 +1172,28 @@ const CustomerPage = () => {
                               <h6>Loan Status</h6>
                               <p>
                                 <span
-                                  className={`badge ${
-                                    selectedContract.loanDetails.status ===
-                                    "approved"
+                                  className={`badge ${selectedContract.loanDetails.status ===
+                                      "approved"
                                       ? "bg-success"
                                       : selectedContract.loanDetails.status ===
                                         "pre-approved"
-                                      ? "bg-info"
-                                      : selectedContract.loanDetails.status ===
-                                        "pending"
-                                      ? "bg-warning"
-                                      : selectedContract.loanDetails.status ===
-                                        "denied"
-                                      ? "bg-danger"
-                                      : "bg-secondary"
-                                  }`}
+                                        ? "bg-info"
+                                        : selectedContract.loanDetails.status ===
+                                          "pending"
+                                          ? "bg-warning"
+                                          : selectedContract.loanDetails.status ===
+                                            "denied"
+                                            ? "bg-danger"
+                                            : "bg-secondary"
+                                    }`}
                                 >
                                   {selectedContract.loanDetails.status
                                     ? selectedContract.loanDetails.status
-                                        .charAt(0)
-                                        .toUpperCase() +
-                                      selectedContract.loanDetails.status.slice(
-                                        1
-                                      )
+                                      .charAt(0)
+                                      .toUpperCase() +
+                                    selectedContract.loanDetails.status.slice(
+                                      1
+                                    )
                                     : "Not provided"}
                                 </span>
                               </p>

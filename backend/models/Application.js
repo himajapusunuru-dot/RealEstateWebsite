@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 
 const applicationSchema = new mongoose.Schema({
-  fullname: {type: String, required:true},
+  firstName: {type: String, required:true},
+  lastName: {type: String, required:true},
   email: String,
   phonenumber: String,
   SSN: Number,
@@ -17,7 +18,27 @@ const applicationSchema = new mongoose.Schema({
     bankStatement: String
   },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Realtor' }
+  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Realtor' },
+  finalPrice: {
+    type: Number,
+    default: null
+  },
+  needsOwnerPriceApproval: {
+    type: Boolean,
+    default: false
+  },
+  priceApproved: {
+    type: Boolean,
+    default: null // null means not yet decided
+  },
+  rejectionReason: {
+    type: String,
+    default: ''
+  },
+  needsPriceConfirmation: {
+    type: Boolean,
+    default: false
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Application', applicationSchema);

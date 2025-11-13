@@ -7,7 +7,9 @@ exports.adminLogin = async (req, res) => {
   const { adminId, password } = req.body;
 
   try {
+    console.log("add", adminId)
     const admin = await Admin.findOne({ adminId }).select("+password");
+    console.log("hiee")
     if (!admin) return res.status(400).json({ message: "Invalid credentials" });
 
     // const isMatch = await bcrypt.compare(password, admin.password);
@@ -79,14 +81,16 @@ exports.userSignup = (model, role) => async (req, res) => {
     email,
     password,
     phone,
-    name,
+    firstName,
+    lastName,
     dob,
     occupation,
     annualIncome,
     address,
-    SSN,
+    SSN
   } = req.body;
   try {
+    console.log(req.body);
     // Check if email already exists
     const existingUser = await model.findOne({ email });
     if (existingUser) {
@@ -97,10 +101,10 @@ exports.userSignup = (model, role) => async (req, res) => {
     }
 
     // Validate required fields
-    if (!name || !email || !password) {
+    if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: name, email, password",
+        message: "Missing required fields: firstName, lastName, email, password",
       });
     }
 
@@ -109,11 +113,13 @@ exports.userSignup = (model, role) => async (req, res) => {
       email,
       password: await bcrypt.hash(password, 10),
       phone: phone || "",
-      name,
+      firstName,
+      lastName,
       address,
-      // Add SSN only for owner/customer
-      ...(SSN && ["owner", "customer"].includes(role) && { SSN }),
+      SSN
     };
+
+    console.log(newUserData)
 
     // Add role-specific fields
     if (["customer", "owner"].includes(role)) {
@@ -139,11 +145,17 @@ exports.userSignup = (model, role) => async (req, res) => {
         message: "Account created. Pending admin approval.",
         data: {
           id: newUser._id,
-          name: newUser.name,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
           email: newUser.email,
           phone: newUser.phone,
           role,
-          ...(role === "realtor" && { address: newUser.address }),
+          ...(role === "realtor" && {
+            addressLane: newUser.addressLane,
+            city: newUser.city,
+            state: newUser.state,
+            zipcode: newUser.zipcode,
+          }),
         },
       });
     }
@@ -158,7 +170,8 @@ exports.userSignup = (model, role) => async (req, res) => {
       token,
       data: {
         id: newUser._id,
-        name: newUser.name,
+        nafirstName: newUser.firstName,
+        lastName: newUser.lastName,
         email: newUser.email,
         phone: newUser.phone,
         role,

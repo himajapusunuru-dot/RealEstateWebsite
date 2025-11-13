@@ -25,7 +25,9 @@ exports.approveUser = async (req, res) => {
 
 exports.rejectUser = async (req, res) => {
   try {
+    console.log("hieeee",req.params.id);
     if (req.params.userType == "owner") {
+      console.log("hieeee2",req.params.id);
       const owner = await Owner.findByIdAndUpdate(
         req.params.id,
         { status: "rejected" },

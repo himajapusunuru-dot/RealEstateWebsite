@@ -25,6 +25,7 @@ import { useAuth } from "../hooks/useAuth";
 import SignaturePad from "../common/SignaturePad";
 import generateContractPdf from "../common/ContractPdfGenerator";
 import ContractDetails from "../common/ContractDetails";
+import PriceConfirmationModal from "../common/PriceConfirmationModal";
 
 // Component to display signatures
 
@@ -143,7 +144,8 @@ const RealtorDashboard = () => {
     paymentTerms: "",
   });
   const [activeTab, setActiveTab] = useState("properties");
-
+  const [showPriceConfirmation, setShowPriceConfirmation] = useState(false);
+  const [selectedApplicationForPrice, setSelectedApplicationForPrice] = useState(null);
   // Fetch realtor data
   useEffect(() => {
     const fetchData = async () => {
@@ -167,6 +169,23 @@ const RealtorDashboard = () => {
 
         const contractsResponse = await api.get("/realtor/contracts");
         setContracts(contractsResponse.data.data);
+
+        const applicationsNeedingPriceConfirmation = applicationsResponse.data.data.filter(
+          app => app.status === 'approved' && app.needsPriceConfirmation
+        );
+
+        if (applicationsNeedingPriceConfirmation.length > 0) {
+          const appNeedingConfirmation = applicationsNeedingPriceConfirmation[0];
+
+          // If this application has a property, set it for price confirmation
+          if (appNeedingConfirmation.property) {
+            setSelectedApplicationForPrice(appNeedingConfirmation);
+            setShowPriceConfirmation(true);
+
+            // Optional: Show a notification about the pending price confirmation
+            alert("There is an application that needs price confirmation.");
+          }
+        }
 
         // Calculate statistics
         const pendingContracts = contractsResponse.data.data.filter(
@@ -214,7 +233,7 @@ const RealtorDashboard = () => {
           console.error("Error fetching contracts:", error);
         }
       };
-      
+
       fetchContracts();
     }
   }, [activeTab, token]);
@@ -228,9 +247,17 @@ const RealtorDashboard = () => {
   // Handle application approval
   const handleApproveApplication = async (applicationId) => {
     try {
+      // First update the application status in the backend
       await api.put(`/realtor/applications/${applicationId}/approve`);
 
-      // Update applications state after approval
+      const approvedApp = applications.find(app => app._id === applicationId);
+
+      if (!approvedApp) {
+        console.error("Application not found");
+        return;
+      }
+
+      // Update applications state
       setApplications(
         applications.map((app) =>
           app._id === applicationId ? { ...app, status: "approved" } : app
@@ -243,6 +270,11 @@ const RealtorDashboard = () => {
         pendingApplications: stats.pendingApplications - 1,
         approvedApplications: stats.approvedApplications + 1,
       });
+
+      // Show price confirmation modal
+      setSelectedApplicationForPrice(approvedApp);
+      setShowPriceConfirmation(true);
+
     } catch (error) {
       console.error("Error approving application:", error);
     }
@@ -271,18 +303,90 @@ const RealtorDashboard = () => {
     }
   };
 
-  // Handle opening contract form for an approved application
-  const handleOpenContractForm = (application) => {
+  const handleCreateContract = (application, finalPrice) => {
+    // Find the property
+    const property = properties.find(p => p._id === application.property._id);
+
+    if (!property) {
+      console.error("Property not found");
+      return;
+    }
+
+    // Set selected application
     setSelectedApplication(application);
 
-    // Reset contract form
+    // Setup contract form with confirmed price
     setContractForm({
-      type: "rental", // or "sale"
+      type: property.type === "plot" ? "sale" : "rental",
       status: "pending",
       startDate: "",
       endDate: "",
       closingDate: "",
-      salePrice: "",
+      salePrice: finalPrice.toString(), // Use the confirmed price
+      depositAmount: "",
+      paymentTerms: "",
+    });
+
+    // Show contract form
+    setShowContractForm(true);
+  };
+
+  // Function to request owner approval (when price is lower than listing)
+  const handleRequestOwnerApproval = async (application, offeredPrice) => {
+    try {
+      // We'll make a simple update to the application to mark it as needing owner approval
+      // This is a frontend-only approach as requested
+
+      // Update UI to reflect that we're waiting for owner approval
+      setApplications(
+        applications.map((app) =>
+          app._id === application._id
+            ? {
+              ...app,
+              status: "approved",
+              needsOwnerPriceApproval: true,
+              offeredPrice: offeredPrice
+            }
+            : app
+        )
+      );
+
+      // Show success message
+      alert(
+        `Price approval request sent to the owner. You'll be notified when they respond.`
+      );
+
+    } catch (error) {
+      console.error("Error requesting owner approval:", error);
+      alert("Failed to send price approval request. Please try again.");
+    }
+  };
+
+  // Handle opening contract form for an approved application
+  const handleOpenContractForm = (application, confirmedPrice = null) => {
+    setSelectedApplication(application);
+
+    // Find property for this application
+    const property = properties.find(
+      (prop) => prop._id === application.property._id
+    );
+
+    if (!property) {
+      console.error("Property not found");
+      return;
+    }
+
+    // Use the confirmed price if provided, otherwise use property price
+    const price = confirmedPrice || property.price;
+
+    // Set contract form with the price
+    setContractForm({
+      type: property.type === "plot" ? "sale" : "rental",
+      status: "pending",
+      startDate: "",
+      endDate: "",
+      closingDate: "",
+      salePrice: price.toString(),
       depositAmount: "",
       paymentTerms: "",
     });
@@ -546,14 +650,6 @@ const RealtorDashboard = () => {
                       <FaFileContract className="me-2" /> Contracts
                     </Nav.Link>
                   </Nav.Item>
-                  {/* <Nav.Item>
-                    <Nav.Link
-                      eventKey="settings"
-                      className="d-flex align-items-center"
-                    >
-                      <FaCog className="me-2" /> Account Settings
-                    </Nav.Link>
-                  </Nav.Item> */}
                 </Nav>
               </Card.Body>
             </Card>
@@ -615,12 +711,12 @@ const RealtorDashboard = () => {
                                           ? "Contracted"
                                           : contractStatus ===
                                             "pending_customer"
-                                          ? "Pending Customer"
-                                          : contractStatus === "pending_owner"
-                                          ? "Pending Owner"
-                                          : contractStatus === "cancelled"
-                                          ? "Cancelled"
-                                          : "Pending"}
+                                            ? "Pending Customer"
+                                            : contractStatus === "pending_owner"
+                                              ? "Pending Owner"
+                                              : contractStatus === "cancelled"
+                                                ? "Cancelled"
+                                                : "Pending"}
                                       </Badge>
                                     )}
                                   </div>
@@ -646,12 +742,12 @@ const RealtorDashboard = () => {
                                       {getPendingApplicationsCount(
                                         property._id
                                       ) > 0 && (
-                                        <Badge bg="danger" className="ms-2">
-                                          {getPendingApplicationsCount(
-                                            property._id
-                                          )}
-                                        </Badge>
-                                      )}
+                                          <Badge bg="danger" className="ms-2">
+                                            {getPendingApplicationsCount(
+                                              property._id
+                                            )}
+                                          </Badge>
+                                        )}
                                     </Button>
                                   </div>
                                 </Card.Body>
@@ -705,7 +801,7 @@ const RealtorDashboard = () => {
                         <tbody>
                           {customers.map((customer) => (
                             <tr key={customer._id}>
-                              <td>{customer.name}</td>
+                              <td>{customer.firstName + " " + customer.lastName}</td>
                               <td>{customer.email}</td>
                               <td>{customer.phone}</td>
                               <td>
@@ -715,11 +811,7 @@ const RealtorDashboard = () => {
                                   ).length
                                 }
                               </td>
-                              {/* <td>
-                                <Button variant="outline-primary" size="sm">
-                                  View Details
-                                </Button>
-                              </td> */}
+                              {}
                             </tr>
                           ))}
                         </tbody>
@@ -748,7 +840,7 @@ const RealtorDashboard = () => {
                         <tbody>
                           {owners.map((owner) => (
                             <tr key={owner._id}>
-                              <td>{owner.name}</td>
+                              <td>{owner.firstName + " " + owner.lastName}</td>
                               <td>{owner.email}</td>
                               <td>{owner.phone}</td>
                               <td>
@@ -758,11 +850,6 @@ const RealtorDashboard = () => {
                                   ).length
                                 }
                               </td>
-                              {/* <td>
-                                <Button variant="outline-primary" size="sm">
-                                  View Details
-                                </Button>
-                              </td> */}
                             </tr>
                           ))}
                         </tbody>
@@ -803,7 +890,7 @@ const RealtorDashboard = () => {
                             return (
                               <tr key={contract._id}>
                                 <td>{property.name || "Unknown Property"}</td>
-                                <td>{customer.name || "Unknown Customer"}</td>
+                                <td>{customer.firstName + " " + customer.lastName || "Unknown Customer"}</td>
                                 <td>
                                   {contract.type === "rental"
                                     ? "Rental"
@@ -823,11 +910,6 @@ const RealtorDashboard = () => {
                                     {getContractStatusLabel(contract.status)}
                                   </Badge>
                                 </td>
-                                {/* <td>
-                                  <Button variant="outline-info" size="sm">
-                                    View Details
-                                  </Button>
-                                </td> */}
                               </tr>
                             );
                           })}
@@ -835,70 +917,6 @@ const RealtorDashboard = () => {
                       </Table>
                     )}
                   </Tab.Pane>
-
-                  {/* Settings Tab */}
-                  {/* <Tab.Pane eventKey="settings">
-                    <h3>Account Settings</h3>
-                    <Form>
-                      <Row>
-                        <Col md={6}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>Name</Form.Label>
-                            <Form.Control type="text" placeholder="Your name" />
-                          </Form.Group>
-                        </Col>
-                        <Col md={6}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>Email</Form.Label>
-                            <Form.Control
-                              type="email"
-                              placeholder="Your email"
-                            />
-                          </Form.Group>
-                        </Col>
-                      </Row>
-                      <Row>
-                        <Col md={6}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>Phone</Form.Label>
-                            <Form.Control type="tel" placeholder="Your phone" />
-                          </Form.Group>
-                        </Col>
-                        <Col md={6}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>Address</Form.Label>
-                            <Form.Control
-                              type="text"
-                              placeholder="Your address"
-                            />
-                          </Form.Group>
-                        </Col>
-                      </Row>
-                      <Row>
-                        <Col md={6}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>New Password</Form.Label>
-                            <Form.Control
-                              type="password"
-                              placeholder="Leave blank to keep current"
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={6}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>Confirm New Password</Form.Label>
-                            <Form.Control
-                              type="password"
-                              placeholder="Confirm new password"
-                            />
-                          </Form.Group>
-                        </Col>
-                      </Row>
-                      <Button variant="primary" type="submit">
-                        Save Changes
-                      </Button>
-                    </Form>
-                  </Tab.Pane> */}
                 </Tab.Content>
               </Card.Body>
             </Card>
@@ -933,6 +951,7 @@ const RealtorDashboard = () => {
                       <th>Date Applied</th>
                       <th>Status</th>
                       <th>Contract Status</th>
+                      <th>Price Status</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -959,7 +978,7 @@ const RealtorDashboard = () => {
                         return (
                           <tr key={application._id}>
                             <td>
-                              {customer.name || "Unknown"}
+                              {customer.firstName + " " + customer.lastName || "Unknown"}
                               <br />
                               <small className="text-muted">
                                 {customer.email}
@@ -976,8 +995,8 @@ const RealtorDashboard = () => {
                                   application.status === "approved"
                                     ? "success"
                                     : application.status === "rejected"
-                                    ? "danger"
-                                    : "warning"
+                                      ? "danger"
+                                      : "warning"
                                 }
                               >
                                 {application.status.charAt(0).toUpperCase() +
@@ -990,8 +1009,8 @@ const RealtorDashboard = () => {
                                   bg={
                                     existingContract
                                       ? getContractStatusBadgeColor(
-                                          existingContract.status
-                                        )
+                                        existingContract.status
+                                      )
                                       : "info"
                                   }
                                 >
@@ -1001,16 +1020,36 @@ const RealtorDashboard = () => {
                                       ? "Awaiting Customer"
                                       : existingContract.status ===
                                         "pending_owner"
-                                      ? "Awaiting Owner"
-                                      : existingContract.status === "active"
-                                      ? "Active"
-                                      : existingContract.status === "cancelled"
-                                      ? "Cancelled"
-                                      : "Unknown"
+                                        ? "Awaiting Owner"
+                                        : existingContract.status === "active"
+                                          ? "Active"
+                                          : existingContract.status === "cancelled"
+                                            ? "Cancelled"
+                                            : "Unknown"
                                     : "Contract Created"}
                                 </Badge>
                               ) : (
                                 <span className="text-muted">No Contract</span>
+                              )}
+                            </td>
+                            <td>
+                              {application.needsOwnerPriceApproval ? (
+                                <Badge bg="warning">Waiting for Owner</Badge>
+                              ) : application.priceApproved === false ? (
+                                <Badge bg="danger">Owner Rejected Price</Badge>
+                              ) : contractCreated ? (
+                                <Badge bg="success">Price Accepted</Badge>
+                              ) : (application.status === "approved" && !application.priceApproved) ? (
+                                <Badge bg="info">Needs Price Confirmation</Badge>
+                              ) : application.priceApproved ? (
+                                <Badge bg="success">Price Accepted</Badge>
+                              ) : (
+                                <span>-</span>
+                              )}
+                              {(!application.priceApproved && application.rejectionReason && application.rejectionReason !== "") && (
+                                <div className="alert alert-danger mt-2 p-2 small">
+                                  <strong>Reason:</strong> {application.rejectionReason}
+                                </div>
                               )}
                             </td>
                             <td>
@@ -1037,18 +1076,60 @@ const RealtorDashboard = () => {
                                   </Button>
                                 </>
                               )}
-                              {application.status === "approved" &&
-                                !contractCreated && (
-                                  <Button
-                                    variant="primary"
-                                    size="sm"
-                                    onClick={() =>
-                                      handleOpenContractForm(application)
-                                    }
-                                  >
-                                    Create Contract
-                                  </Button>
-                                )}
+                              {application.status === "approved" && !contractCreated && (
+                                <>
+                                  {application.needsOwnerPriceApproval ? (
+                                    <Button
+                                      variant="secondary"
+                                      size="sm"
+                                      disabled
+                                    >
+                                      Waiting for Owner
+                                    </Button>
+                                  ) : application.priceApproved === false ? (
+                                    <Button
+                                      variant="primary"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedApplicationForPrice(application);
+                                        setShowPriceConfirmation(true);
+                                      }}
+                                    >
+                                      Try New Price
+                                    </Button>
+                                  ) : application.priceApproved === true ? (
+                                    <Button
+                                      variant="primary"
+                                      size="sm"
+                                      onClick={() => handleCreateContract(application, application.finalPrice)}
+                                    >
+                                      Create Contract
+                                    </Button>
+                                  ) : application.needsPriceConfirmation ? (
+                                    <Button
+                                      variant="primary"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedApplicationForPrice(application);
+                                        setShowPriceConfirmation(true);
+                                      }}
+                                    >
+                                      Confirm Price
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="primary"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedApplicationForPrice(application);
+                                        setShowPriceConfirmation(true);
+                                      }}
+                                    >
+                                      Set Price
+                                    </Button>
+                                  )}
+                                </>
+                              )}
                               {contractCreated && (
                                 <Button
                                   variant="outline-info"
@@ -1102,6 +1183,20 @@ const RealtorDashboard = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* Add Price Confirmation Modal */}
+      <PriceConfirmationModal
+        show={showPriceConfirmation}
+        onHide={() => setShowPriceConfirmation(false)}
+        property={
+          selectedApplicationForPrice
+            ? properties.find(p => p._id === selectedApplicationForPrice.property._id)
+            : null
+        }
+        application={selectedApplicationForPrice}
+        onCreateContract={handleCreateContract}
+        onRequestOwnerApproval={handleRequestOwnerApproval}
+      />
 
       {/* Contract Form Modal */}
       <Modal
@@ -1250,9 +1345,12 @@ const RealtorDashboard = () => {
                     <Form.Control
                       type="text"
                       value={
-                        customers.find(
-                          (c) => c._id === selectedApplication.customer._id
-                        )?.name || ""
+                        (() => {
+                          const customer = customers.find(
+                            (c) => c._id === selectedApplication.customer._id
+                          );
+                          return customer ? `${customer.firstName} ${customer.lastName}` : "";
+                        })()
                       }
                       disabled
                     />
@@ -1264,13 +1362,17 @@ const RealtorDashboard = () => {
                     <Form.Control
                       type="text"
                       value={
-                        owners.find(
-                          (o) =>
-                            o._id ===
-                            properties.find(
-                              (p) => p._id === selectedApplication.property._id
-                            )?.owner._id
-                        )?.name || ""
+
+                        (() => {
+                          const owner = owners.find(
+                            (o) =>
+                              o._id ===
+                              properties.find(
+                                (p) => p._id === selectedApplication.property._id
+                              )?.owner._id
+                          );
+                          return owner ? `${owner.firstName} ${owner.lastName}` : "";
+                        })()
                       }
                       disabled
                     />

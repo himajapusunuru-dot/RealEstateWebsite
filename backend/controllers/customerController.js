@@ -52,14 +52,7 @@ exports.submitApplication = async (req, res) => {
     await processUpload(req, res, documentUpload);
 
     const { customerId } = req.params;
-    const { propertyId, fullname } = req.body;
-
-    // Validation checks
-    if (!propertyId || !fullname) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing required fields" });
-    }
+    const { propertyId, firstName, lastName } = req.body;
 
     const property = await Property.findById(propertyId);
     if (!property || property.status !== "available") {
