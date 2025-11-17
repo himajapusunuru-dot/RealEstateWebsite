@@ -115,10 +115,9 @@ Property: propertyid, propertyname, propertystatus, propertytype, propertybhk, p
 Application: fullname, emailaddress, phonenumber, ssn, jobproof, employmentstatus, annualincome, governmentid, currentaddress, permanentaddress, profdoc, bankstatement, propertyid
 
 Contract: contractid, contracttype, contractstatus, dates (contract/start/end/closing), saleprice, depositamount, paymentterms, ownerid, buyerid, realtorid, propertyid, propertyaddress, propertytype, description, loan/ mortgage details, clauses, ownersignature, buyersignature
+```
 
-You can include your ER diagram as:
-
-Project Structure 📁
+# Project Structure 📁
 text
 
 project-root/
@@ -157,7 +156,7 @@ project-root/
 │   └── package-lock.json
 │
 └── README.md
-Getting Started 🚀
+# Getting Started 🚀
 Prerequisites
 Node.js (LTS recommended)
 
@@ -195,7 +194,7 @@ bash
 npm run dev
 Frontend will typically run on: http://localhost:5173
 
-Environment Variables 🔑
+# Environment Variables 🔑
 /backend/.env
 env
 
@@ -208,7 +207,7 @@ JWT_SECRET=your_jwt_secret
 env
 
 VITE_API_URL=http://localhost:5000/api
-Scripts 📜
+# Scripts 📜
 Typical useful scripts (defined in package.json):
 
 Backend package.json
