@@ -222,5 +222,3 @@ npm run dev – start Vite dev server
 npm run build – build for production
 
 npm run preview – preview production build
-
-(Ensure these match your actual script names.)
