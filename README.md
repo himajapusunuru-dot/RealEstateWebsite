@@ -22,7 +22,7 @@ The platform connects **Admins, Realtors, Owners, and Customers** to manage prop
 
 ---
 
- 📖 ## Overview
+## Overview
 
 Traditional real estate processes are still largely offline and fragmented, leading to:
 - Inefficient communication between buyers, sellers, and agents  
