@@ -22,7 +22,7 @@ The platform connects **Admins, Realtors, Owners, and Customers** to manage prop
 
 ---
 
-## Overview
+## Overview 📖
 
 Traditional real estate processes are still largely offline and fragmented, leading to:
 - Inefficient communication between buyers, sellers, and agents  
@@ -37,7 +37,7 @@ This project provides a **centralized web platform** for:
 
 ---
 
-## ⭐ Features
+## Features ⭐
 
 - **JWT authentication** with role-based access
 - **Admin dashboard** for managing users and overall system
@@ -50,7 +50,7 @@ This project provides a **centralized web platform** for:
 
 ---
 
-## 👥 Roles
+## Roles 👥
 
 - **Admin**
   - Manages users (customers, owners, realtors)
@@ -72,7 +72,7 @@ This project provides a **centralized web platform** for:
 
 ---
 
-## 🛠 Technology Stack
+## Technology Stack 🛠
 
 ### Frontend
 - React (Vite)
@@ -89,7 +89,7 @@ This project provides a **centralized web platform** for:
 
 ---
 
-## 🏗 System Architecture
+## System Architecture 🏗
 
 ```text
 frontend/  (React + Vite)   →   backend/ (Node + Express REST API)   →   MongoDB
@@ -118,7 +118,7 @@ Contract: contractid, contracttype, contractstatus, dates (contract/start/end/cl
 
 You can include your ER diagram as:
 
-📁 Project Structure
+Project Structure 📁
 text
 
 project-root/
@@ -157,7 +157,7 @@ project-root/
 │   └── package-lock.json
 │
 └── README.md
-🚀 Getting Started
+Getting Started 🚀
 Prerequisites
 Node.js (LTS recommended)
 
@@ -195,7 +195,7 @@ bash
 npm run dev
 Frontend will typically run on: http://localhost:5173
 
-🔑 Environment Variables
+Environment Variables 🔑
 /backend/.env
 env
 
@@ -208,7 +208,7 @@ JWT_SECRET=your_jwt_secret
 env
 
 VITE_API_URL=http://localhost:5000/api
-📜 Scripts
+Scripts 📜
 Typical useful scripts (defined in package.json):
 
 Backend package.json
