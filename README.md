@@ -7,7 +7,7 @@ The platform connects **Admins, Realtors, Owners, and Customers** to manage prop
 
 ## 📚 Table of Contents
 
-- [Overview](#overview)
+- [Overview](#Overview)
 - [Features](#features)
 - [Roles](#roles)
 - [Technology Stack](#technology-stack)
